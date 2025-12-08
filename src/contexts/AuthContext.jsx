@@ -1,4 +1,6 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { ensureProfile } from '@/lib/profileService';
 
 const AuthContext = createContext();
 
@@ -11,47 +13,118 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }) {
-  // Mock authentication state for development
-  const mockAuthState = {
-    isAuthenticated: true,
-    user: { id: 'mock-user-id', email: 'mock@example.com' },
-    profile: { id: 'mock-profile-id', username: 'Mock User' },
-    isLoading: false,
-    session: { user: { id: 'mock-user-id' } }
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [session, setSession] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Initialize auth state and listen for changes
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        // Fetch or create profile
+        ensureProfile(session.user).then(({ data }) => {
+          setProfile(data);
+          setIsLoading(false);
+        });
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        // Fetch or create profile
+        const { data } = await ensureProfile(session.user);
+        setProfile(data);
+      } else {
+        setProfile(null);
+      }
+
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Sign in with email and password
+  const signIn = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+    return data;
   };
 
-  // Mock authentication functions
-  const signIn = async () => {
-    console.log('Mock sign in');
-    return { user: mockAuthState.user };
+  // Sign up with email and password
+  const signUp = async (email, password) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+      },
+    });
+
+    if (error) throw error;
+    return data;
   };
 
-  const signUp = async () => {
-    console.log('Mock sign up');
-    return { user: mockAuthState.user };
-  };
-
+  // Sign out
   const signOut = async () => {
-    console.log('Mock sign out');
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
   };
 
+  // Sign in with Google
   const signInWithGoogle = async () => {
-    console.log('Mock Google sign in');
-    return { user: mockAuthState.user };
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+
+    if (error) throw error;
+    return data;
   };
 
+  // Sign in with GitHub
   const signInWithGithub = async () => {
-    console.log('Mock GitHub sign in');
-    return { user: mockAuthState.user };
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+
+    if (error) throw error;
+    return data;
   };
 
   const value = {
-    ...mockAuthState,
+    user,
+    profile,
+    session,
+    isAuthenticated: !!user,
+    isLoading,
     signIn,
     signUp,
     signOut,
     signInWithGoogle,
-    signInWithGithub
+    signInWithGithub,
   };
 
   return (
