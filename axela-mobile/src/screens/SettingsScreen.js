@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { List, Switch, Divider } from 'react-native-paper';
@@ -7,12 +7,40 @@ import { useAxela } from '../contexts/AxelaContext';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function SettingsScreen() {
-  const { config, mode, setMode, updateConfig } = useAxela();
+  const { config, mode, setMode, updateConfig, mobileSettings, updateSettings, loadMobileSettings } = useAxela();
   const { user, signOut } = useAuth();
+
+  useEffect(() => {
+    loadMobileSettings();
+  }, []);
 
   const handleModeChange = (newMode) => {
     setMode(newMode);
     updateConfig('app', { mode: newMode });
+  };
+
+  const handleThemeChange = (theme) => {
+    updateSettings({ theme });
+  };
+
+  const handleNotificationToggle = (value) => {
+    updateSettings({ notifications_enabled: value });
+  };
+
+  const handleSoundToggle = (value) => {
+    updateSettings({ sound_enabled: value });
+  };
+
+  const handleVibrationToggle = (value) => {
+    updateSettings({ vibration_enabled: value });
+  };
+
+  const handleAutoSyncToggle = (value) => {
+    updateSettings({ auto_sync: value });
+  };
+
+  const handleSyncIntervalChange = (interval) => {
+    updateSettings({ sync_interval: interval });
   };
 
   const handleSignOut = () => {
@@ -90,18 +118,69 @@ export default function SettingsScreen() {
           </View>
         </List.Section>
 
-        {/* Voice Settings */}
+        {/* Mobile Settings */}
         <List.Section>
-          <List.Subheader style={styles.sectionHeader}>Voice</List.Subheader>
+          <List.Subheader style={styles.sectionHeader}>Appearance</List.Subheader>
           <View style={styles.card}>
             <List.Item
-              title="Voice Input"
-              description="Enable voice recognition"
-              left={() => <Icon name="microphone" size={24} color="#f97316" style={styles.icon} />}
+              title="Light"
+              description="Use light theme"
+              left={() => (
+                <Icon
+                  name={mobileSettings?.theme === 'light' ? 'radiobox-marked' : 'radiobox-blank'}
+                  size={24}
+                  color={mobileSettings?.theme === 'light' ? '#f97316' : '#78716c'}
+                  style={styles.radio}
+                />
+              )}
+              onPress={() => handleThemeChange('light')}
+              style={[styles.listItem, mobileSettings?.theme === 'light' && styles.activeItem]}
+            />
+            <Divider />
+            <List.Item
+              title="Dark"
+              description="Use dark theme"
+              left={() => (
+                <Icon
+                  name={mobileSettings?.theme === 'dark' ? 'radiobox-marked' : 'radiobox-blank'}
+                  size={24}
+                  color={mobileSettings?.theme === 'dark' ? '#f97316' : '#78716c'}
+                  style={styles.radio}
+                />
+              )}
+              onPress={() => handleThemeChange('dark')}
+              style={[styles.listItem, mobileSettings?.theme === 'dark' && styles.activeItem]}
+            />
+            <Divider />
+            <List.Item
+              title="Auto"
+              description="Follow system theme"
+              left={() => (
+                <Icon
+                  name={mobileSettings?.theme === 'auto' ? 'radiobox-marked' : 'radiobox-blank'}
+                  size={24}
+                  color={mobileSettings?.theme === 'auto' ? '#f97316' : '#78716c'}
+                  style={styles.radio}
+                />
+              )}
+              onPress={() => handleThemeChange('auto')}
+              style={[styles.listItem, mobileSettings?.theme === 'auto' && styles.activeItem]}
+            />
+          </View>
+        </List.Section>
+
+        {/* Notifications */}
+        <List.Section>
+          <List.Subheader style={styles.sectionHeader}>Notifications</List.Subheader>
+          <View style={styles.card}>
+            <List.Item
+              title="Notifications"
+              description="Enable push notifications"
+              left={() => <Icon name="bell" size={24} color="#f97316" style={styles.icon} />}
               right={() => (
                 <Switch
-                  value={config?.voice?.enabled !== false}
-                  onValueChange={(value) => updateConfig('voice', { enabled: value })}
+                  value={mobileSettings?.notifications_enabled !== false}
+                  onValueChange={handleNotificationToggle}
                   color="#f97316"
                 />
               )}
@@ -109,18 +188,70 @@ export default function SettingsScreen() {
             />
             <Divider />
             <List.Item
-              title="Auto-Speak Responses"
-              description="Automatically speak replies"
+              title="Sound"
+              description="Play notification sounds"
               left={() => <Icon name="volume-high" size={24} color="#f97316" style={styles.icon} />}
               right={() => (
                 <Switch
-                  value={config?.custom?.auto_speak_responses === true}
-                  onValueChange={(value) => updateConfig('custom', { auto_speak_responses: value })}
+                  value={mobileSettings?.sound_enabled !== false}
+                  onValueChange={handleSoundToggle}
                   color="#f97316"
                 />
               )}
               style={styles.listItem}
             />
+            <Divider />
+            <List.Item
+              title="Vibration"
+              description="Vibrate on notifications"
+              left={() => <Icon name="vibrate" size={24} color="#f97316" style={styles.icon} />}
+              right={() => (
+                <Switch
+                  value={mobileSettings?.vibration_enabled !== false}
+                  onValueChange={handleVibrationToggle}
+                  color="#f97316"
+                />
+              )}
+              style={styles.listItem}
+            />
+          </View>
+        </List.Section>
+
+        {/* Sync Settings */}
+        <List.Section>
+          <List.Subheader style={styles.sectionHeader}>Sync</List.Subheader>
+          <View style={styles.card}>
+            <List.Item
+              title="Auto Sync"
+              description="Automatically sync data"
+              left={() => <Icon name="sync" size={24} color="#f97316" style={styles.icon} />}
+              right={() => (
+                <Switch
+                  value={mobileSettings?.auto_sync !== false}
+                  onValueChange={handleAutoSyncToggle}
+                  color="#f97316"
+                />
+              )}
+              style={styles.listItem}
+            />
+            {mobileSettings?.auto_sync && (
+              <>
+                <Divider />
+                <List.Item
+                  title="Sync Interval"
+                  description={`${mobileSettings?.sync_interval || 5} minutes`}
+                  left={() => <Icon name="timer" size={24} color="#f97316" style={styles.icon} />}
+                  onPress={() => {
+                    const intervals = [1, 5, 10, 15, 30, 60];
+                    const current = mobileSettings?.sync_interval || 5;
+                    const currentIndex = intervals.indexOf(current);
+                    const nextIndex = (currentIndex + 1) % intervals.length;
+                    handleSyncIntervalChange(intervals[nextIndex]);
+                  }}
+                  style={styles.listItem}
+                />
+              </>
+            )}
           </View>
         </List.Section>
 
