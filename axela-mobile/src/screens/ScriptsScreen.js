@@ -1,12 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FAB } from 'react-native-paper';
+import { Snackbar } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAxela } from '../contexts/AxelaContext';
 
 export default function ScriptsScreen() {
-  const { scripts, loading, loadScripts, startScript, stopScript, executeScript } = useAxela();
+  const { scripts, loading, loadScripts, executeScript } = useAxela();
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   useEffect(() => {
     loadScripts();
@@ -22,38 +24,14 @@ export default function ScriptsScreen() {
     return colors[category] || '#78716c';
   };
 
-  const handleStartScript = async (script) => {
-    await startScript(script.id);
-  };
-
-  const handleStopScript = async (script) => {
-    await stopScript(script.id);
-  };
-
   const handleScriptExecute = async (script) => {
-    if (!script.is_active) {
-      Alert.alert('Script Inactive', 'Please activate the script first');
-      return;
+    const result = await executeScript(script.id);
+    if (result.success) {
+      setSnackbarMessage(`Script "${script.name}" sent to desktop`);
+      setSnackbarVisible(true);
+    } else {
+      Alert.alert('Error', result.message || 'Failed to execute script');
     }
-
-    Alert.alert(
-      'Execute Script',
-      `Execute "${script.name}" on desktop?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Execute',
-          onPress: async () => {
-            const result = await executeScript(script.id);
-            if (result.success) {
-              Alert.alert('Success', result.message);
-            } else {
-              Alert.alert('Error', result.message);
-            }
-          },
-        },
-      ]
-    );
   };
 
   return (
@@ -74,7 +52,7 @@ export default function ScriptsScreen() {
               <TouchableOpacity
                 key={script.id}
                 style={styles.scriptCard}
-                onPress={() => handleScriptExecute(script)}
+                activeOpacity={0.7}
               >
                 <View style={styles.scriptHeader}>
                   <View style={styles.scriptHeaderLeft}>
@@ -103,25 +81,24 @@ export default function ScriptsScreen() {
                     </View>
                   </View>
                   <View style={styles.actionButtons}>
-                    {script.is_active ? (
-                      <TouchableOpacity
-                        style={[styles.actionButton, styles.stopButton]}
-                        onPress={() => handleStopScript(script)}
-                        activeOpacity={0.7}
-                      >
-                        <Icon name="stop" size={16} color="#fff" style={styles.buttonIcon} />
-                        <Text style={styles.stopButtonText}>Stop</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity
-                        style={[styles.actionButton, styles.startButton]}
-                        onPress={() => handleStartScript(script)}
-                        activeOpacity={0.7}
-                      >
-                        <Icon name="play" size={16} color="#fff" style={styles.buttonIcon} />
-                        <Text style={styles.startButtonText}>Start</Text>
-                      </TouchableOpacity>
-                    )}
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
+                        script.is_recurring ? styles.startButton : styles.runButton,
+                      ]}
+                      onPress={() => handleScriptExecute(script)}
+                      activeOpacity={0.7}
+                    >
+                      <Icon
+                        name={script.is_recurring ? "play" : "play-circle"}
+                        size={16}
+                        color="#fff"
+                        style={styles.buttonIcon}
+                      />
+                      <Text style={styles.buttonText}>
+                        {script.is_recurring ? 'Start' : 'Run'}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
                 <View style={styles.scriptFooter}>
@@ -130,7 +107,14 @@ export default function ScriptsScreen() {
                       <Icon name="star" size={16} color="#f97316" style={styles.metaIcon} />
                     )}
                     {script.is_recurring && (
-                      <Icon name="repeat" size={16} color="#78716c" style={styles.metaIcon} />
+                      <>
+                        <Icon name="repeat" size={16} color="#78716c" style={styles.metaIcon} />
+                        {script.recurring_enabled && script.recurring_interval && (
+                          <Text style={styles.recurringText}>
+                            Every {script.recurring_interval}
+                          </Text>
+                        )}
+                      </>
                     )}
                     <Text style={styles.usageCount}>
                       Used {script.usage_count || 0} times
@@ -155,12 +139,16 @@ export default function ScriptsScreen() {
           </View>
         )}
       </ScrollView>
-      <FAB
-        icon="plus"
-        style={styles.fab}
-        onPress={() => Alert.alert('Coming Soon', 'Script creation will be implemented soon')}
-        color="#fff"
-      />
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        style={styles.snackbar}
+        theme={{ colors: { onSurface: '#10b981', surface: '#1c1917' } }}
+        contentStyle={styles.snackbarContent}
+      >
+        <Text style={styles.snackbarText}>{snackbarMessage}</Text>
+      </Snackbar>
     </SafeAreaView>
   );
 }
@@ -296,21 +284,25 @@ const styles = StyleSheet.create({
   startButton: {
     backgroundColor: '#10b981',
   },
-  stopButton: {
-    backgroundColor: '#ef4444',
+  runButton: {
+    backgroundColor: '#f97316',
+  },
+  disabledButton: {
+    backgroundColor: '#44403c',
+    opacity: 0.5,
   },
   buttonIcon: {
     marginRight: 2,
   },
-  startButtonText: {
+  buttonText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
   },
-  stopButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+  recurringText: {
+    fontSize: 12,
+    color: '#78716c',
+    marginLeft: 4,
   },
   fab: {
     position: 'absolute',
@@ -318,5 +310,16 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: '#f97316',
+  },
+  snackbar: {
+    backgroundColor: '#1c1917',
+  },
+  snackbarContent: {
+    backgroundColor: '#1c1917',
+  },
+  snackbarText: {
+    color: '#10b981',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

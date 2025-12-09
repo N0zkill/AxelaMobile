@@ -61,8 +61,15 @@ export const sendRemoteCommand = async (params, session) => {
 
     const body = {
       command_type,
-      mode: mode || command_type,
     };
+
+    // Only include mode for non-script commands (mode constraint doesn't allow 'script')
+    // For script commands, do NOT include mode at all
+    if (command_type !== 'script') {
+      // For non-script commands, use provided mode or default to command_type
+      body.mode = mode || command_type;
+    }
+    // Explicitly do NOT set mode for script commands
 
     if (command_text) {
       body.command_text = command_text;
@@ -72,6 +79,13 @@ export const sendRemoteCommand = async (params, session) => {
     }
     if (desktop_instance_id) {
       body.desktop_instance_id = desktop_instance_id;
+    }
+
+    // Debug: Log the body to verify mode is not included for scripts
+    if (command_type === 'script') {
+      console.log('Sending script command, body:', JSON.stringify(body));
+      // Ensure mode is definitely not in the body
+      delete body.mode;
     }
 
     const response = await fetch(`${SUPABASE_URL}/functions/v1/send-remote-command`, {
