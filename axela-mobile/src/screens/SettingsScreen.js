@@ -43,21 +43,11 @@ export default function SettingsScreen() {
     updateSettings({ sync_interval: interval });
   };
 
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            await signOut();
-          },
-        },
-      ]
-    );
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (error) {
+      Alert.alert('Error', error.message || 'Failed to sign out');
+    }
   };
 
   return (

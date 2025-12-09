@@ -128,7 +128,7 @@ export default function LoginScreen({ navigation }) {
           >
             <View style={styles.socialButtonContent}>
               <Icon name="google" size={20} color="#DB4437" style={styles.socialIcon} />
-              <Text style={[styles.socialButtonText, { color: '#000' }]}>Continue with Google</Text>
+              <Text style={[styles.socialButtonText,]}>Continue with Google</Text>
             </View>
           </TouchableOpacity>
 
