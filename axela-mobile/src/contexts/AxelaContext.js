@@ -281,10 +281,22 @@ export const AxelaProvider = ({ children }) => {
       };
     }
 
+    const commandId = data?.command_id;
+
+    if (commandType === 'chat' && commandId) {
+      return {
+        success: true,
+        message: 'Waiting for response...',
+        command_id: commandId,
+        data: data,
+        waitForResponse: true,
+      };
+    }
+
     return {
       success: true,
       message: `Command sent to desktop${selectedDesktopId ? '' : ' (broadcast)'}`,
-      command_id: data?.command_id,
+      command_id: commandId,
       data: data,
     };
   };

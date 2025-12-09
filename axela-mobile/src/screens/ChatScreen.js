@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, FAB, Menu, Divider, ActivityIndicator } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAxela } from '../contexts/AxelaContext';
+import { subscribeToCommandResponse, pollCommandResponse } from '../lib/commandResponses';
 
 const ChatMessage = ({ message }) => {
   const isUser = message.role === 'user';
@@ -63,6 +64,7 @@ export default function ChatScreen() {
   const flatListRef = useRef(null);
   const slideAnim = useRef(new Animated.Value(Dimensions.get('window').width)).current;
   const hasCreatedInitialConversation = useRef(false);
+  const responseSubscriptions = useRef(new Map());
 
   useEffect(() => {
     // Only create a new conversation on initial load when there are no conversations
@@ -72,6 +74,17 @@ export default function ChatScreen() {
       createNewConversation();
     }
   }, [loading]); // Only depend on loading, not conversations.length to prevent re-triggering
+
+  useEffect(() => {
+    loadDesktopInstances();
+
+    return () => {
+      responseSubscriptions.current.forEach((subscription) => {
+        subscription.unsubscribe();
+      });
+      responseSubscriptions.current.clear();
+    };
+  }, []);
 
   const handleCreateNewConversation = async () => {
     hasCreatedInitialConversation.current = true; // Prevent auto-creation after manual creation
@@ -187,16 +200,62 @@ export default function ChatScreen() {
       // Execute command and get response
       const result = await executeCommand(messageContent);
 
-      // Save assistant message
-      await saveMessage(
-        conv.id,
-        'assistant',
-        result.success ? result.message : `Error: ${result.message}`,
-        result.success,
-        result.data
-      );
+      if (result.waitForResponse && result.command_id && mode === 'chat') {
+        const placeholderMessage = await saveMessage(
+          conv.id,
+          'assistant',
+          'Waiting for response...',
+          null,
+          { command_id: result.command_id, pending: true }
+        );
 
-      // Reload conversations to get updated title
+        const subscription = subscribeToCommandResponse(result.command_id, async (payload) => {
+          if (payload.new && payload.new.response_text) {
+            await saveMessage(
+              conv.id,
+              'assistant',
+              payload.new.response_text,
+              payload.new.success !== false,
+              payload.new
+            );
+
+            if (responseSubscriptions.current.has(result.command_id)) {
+              responseSubscriptions.current.get(result.command_id).unsubscribe();
+              responseSubscriptions.current.delete(result.command_id);
+            }
+          }
+        });
+
+        pollCommandResponse(result.command_id).then(async (pollResult) => {
+          if (pollResult.data && pollResult.data.response_text) {
+            await saveMessage(
+              conv.id,
+              'assistant',
+              pollResult.data.response_text,
+              pollResult.data.success !== false,
+              pollResult.data
+            );
+
+            if (responseSubscriptions.current.has(result.command_id)) {
+              responseSubscriptions.current.get(result.command_id).unsubscribe();
+              responseSubscriptions.current.delete(result.command_id);
+            }
+          }
+        });
+
+        if (subscription) {
+          responseSubscriptions.current.set(result.command_id, subscription);
+        }
+      } else {
+        await saveMessage(
+          conv.id,
+          'assistant',
+          result.success ? result.message : `Error: ${result.message}`,
+          result.success,
+          result.data
+        );
+      }
+
       await loadConversations();
     } catch (error) {
       console.error('Send message error:', error);
