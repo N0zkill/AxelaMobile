@@ -151,7 +151,7 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1d2e',
+    backgroundColor: '#0c0a09',
   },
   content: {
     flex: 1,
@@ -175,14 +175,14 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   input: {
-    backgroundColor: '#252836',
+    backgroundColor: '#1c1917',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#3a3d4e',
-    color: '#fff',
+    borderColor: '#292524',
+    color: '#fafaf9',
   },
   button: {
     backgroundColor: '#f97316',
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#3a3d4e',
+    backgroundColor: '#292524',
   },
   dividerText: {
     marginHorizontal: 16,
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#3a3d4e',
+    borderColor: '#292524',
   },
   socialButtonContent: {
     flexDirection: 'row',
@@ -243,10 +243,10 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   googleButton: {
-    backgroundColor: '#252836',
+    backgroundColor: '#1c1917',
   },
   githubButton: {
-    backgroundColor: '#252836',
+    backgroundColor: '#1c1917',
   },
   socialButtonText: {
     fontSize: 16,

@@ -12,17 +12,20 @@ import {
   fetchMobileSettings,
   updateMobileSettings,
 } from '../lib/database';
+import { listDesktopInstances, sendRemoteCommand } from '../lib/remoteCommands';
 
 const AxelaContext = createContext();
 
 export const AxelaProvider = ({ children }) => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [config, setConfig] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [scripts, setScripts] = useState([]);
   const [mobileSettings, setMobileSettings] = useState(null);
+  const [desktopInstances, setDesktopInstances] = useState([]);
+  const [selectedDesktopId, setSelectedDesktopId] = useState(null);
   const [isConnected, setIsConnected] = useState(true); // Supabase is always connected
   const [mode, setMode] = useState('ai');
   const [loading, setLoading] = useState(true);
@@ -31,15 +34,18 @@ export const AxelaProvider = ({ children }) => {
   useEffect(() => {
     if (user) {
       loadAllData();
+      loadDesktopInstances();
     } else {
       setConversations([]);
       setCurrentConversation(null);
       setMessages([]);
       setScripts([]);
       setMobileSettings(null);
+      setDesktopInstances([]);
+      setSelectedDesktopId(null);
       setLoading(false);
     }
-  }, [user]);
+  }, [user, session]);
 
   // Load messages when conversation changes
   useEffect(() => {
@@ -219,12 +225,99 @@ export const AxelaProvider = ({ children }) => {
     return messageData;
   };
 
+  const loadDesktopInstances = async () => {
+    if (!session) return;
+
+    const { data, error } = await listDesktopInstances(session);
+    if (error) {
+      console.error('Error loading desktop instances:', error);
+      return;
+    }
+
+    setDesktopInstances(data || []);
+
+    // Auto-select first desktop if none selected
+    if (!selectedDesktopId && data && data.length > 0) {
+      setSelectedDesktopId(data[0].id);
+    }
+  };
+
   const executeCommand = async (command, commandMode = null) => {
-    // This would typically call your backend API
-    // For now, return a mock response
+    if (!session) {
+      return {
+        success: false,
+        message: 'Not authenticated',
+      };
+    }
+
+    // Determine command type based on mode
+    const cmdMode = commandMode || mode;
+    let commandType = 'ai';
+
+    if (cmdMode === 'chat') {
+      commandType = 'chat';
+    } else if (cmdMode === 'ai') {
+      commandType = 'ai';
+    } else if (cmdMode === 'manual') {
+      commandType = 'manual';
+    } else {
+      commandType = 'ai';
+    }
+
+    // Send command to desktop
+    const { data, error } = await sendRemoteCommand(
+      {
+        command_type: commandType,
+        command_text: command,
+        desktop_instance_id: selectedDesktopId || undefined, // Omit for broadcast
+      },
+      session
+    );
+
+    if (error) {
+      return {
+        success: false,
+        message: error.message || 'Failed to send command to desktop',
+      };
+    }
+
     return {
       success: true,
-      message: `Command executed: ${command}`,
+      message: `Command sent to desktop${selectedDesktopId ? '' : ' (broadcast)'}`,
+      command_id: data?.command_id,
+      data: data,
+    };
+  };
+
+  const executeScript = async (scriptId) => {
+    if (!session) {
+      return {
+        success: false,
+        message: 'Not authenticated',
+      };
+    }
+
+    const { data, error } = await sendRemoteCommand(
+      {
+        command_type: 'script',
+        script_id: scriptId,
+        desktop_instance_id: selectedDesktopId || undefined,
+      },
+      session
+    );
+
+    if (error) {
+      return {
+        success: false,
+        message: error.message || 'Failed to execute script on desktop',
+      };
+    }
+
+    return {
+      success: true,
+      message: 'Script sent to desktop',
+      command_id: data?.command_id,
+      data: data,
     };
   };
 
@@ -334,6 +427,8 @@ export const AxelaProvider = ({ children }) => {
     messages,
     scripts,
     mobileSettings,
+    desktopInstances,
+    selectedDesktopId,
     isConnected,
     mode,
     loading,
@@ -341,12 +436,15 @@ export const AxelaProvider = ({ children }) => {
     setConversations,
     setCurrentConversation,
     setScripts,
+    setSelectedDesktopId,
     executeCommand,
+    executeScript,
     updateConfig,
     updateSettings,
     loadConversations,
     loadScripts,
     loadMobileSettings,
+    loadDesktopInstances,
     createNewConversation,
     saveMessage,
     loadAllData,

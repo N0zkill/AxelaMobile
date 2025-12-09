@@ -173,7 +173,7 @@ export default function SignUpScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1d2e',
+    backgroundColor: '#0c0a09',
   },
   scrollContent: {
     flexGrow: 1,
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   input: {
-    backgroundColor: '#252836',
+    backgroundColor: '#1c1917',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#3a3d4e',
+    backgroundColor: '#292524',
   },
   dividerText: {
     marginHorizontal: 16,
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   socialButton: {
-    backgroundColor: '#252836',
+    backgroundColor: '#1c1917',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -270,11 +270,11 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   googleButton: {
-    backgroundColor: '#252836',
+    backgroundColor: '#1c1917',
     borderColor: '#3a3d4e',
   },
   githubButton: {
-    backgroundColor: '#252836',
+    backgroundColor: '#1c1917',
     borderColor: '#3a3d4e',
   },
   socialButtonText: {

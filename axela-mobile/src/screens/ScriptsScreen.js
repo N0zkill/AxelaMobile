@@ -6,7 +6,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAxela } from '../contexts/AxelaContext';
 
 export default function ScriptsScreen() {
-  const { scripts, loading, loadScripts, startScript, stopScript } = useAxela();
+  const { scripts, loading, loadScripts, startScript, stopScript, executeScript } = useAxela();
 
   useEffect(() => {
     loadScripts();
@@ -30,9 +30,30 @@ export default function ScriptsScreen() {
     await stopScript(script.id);
   };
 
-  const handleScriptPress = (script) => {
-    // TODO: Show script details or edit
-    Alert.alert('Script Details', `Name: ${script.name}\nDescription: ${script.description}\nCategory: ${script.category}`);
+  const handleScriptExecute = async (script) => {
+    if (!script.is_active) {
+      Alert.alert('Script Inactive', 'Please activate the script first');
+      return;
+    }
+
+    Alert.alert(
+      'Execute Script',
+      `Execute "${script.name}" on desktop?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Execute',
+          onPress: async () => {
+            const result = await executeScript(script.id);
+            if (result.success) {
+              Alert.alert('Success', result.message);
+            } else {
+              Alert.alert('Error', result.message);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -53,7 +74,7 @@ export default function ScriptsScreen() {
               <TouchableOpacity
                 key={script.id}
                 style={styles.scriptCard}
-                onPress={() => handleScriptPress(script)}
+                onPress={() => handleScriptExecute(script)}
               >
                 <View style={styles.scriptHeader}>
                   <View style={styles.scriptHeaderLeft}>
@@ -196,6 +217,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#292524',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   scriptHeader: {
     flexDirection: 'row',

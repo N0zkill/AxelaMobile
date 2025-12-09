@@ -44,11 +44,16 @@ export default function ChatScreen() {
     executeCommand,
     isConnected,
     mode,
+    setMode,
     loading,
     createNewConversation,
     saveMessage,
     loadConversations,
     deleteCurrentConversation,
+    desktopInstances,
+    selectedDesktopId,
+    setSelectedDesktopId,
+    loadDesktopInstances,
   } = useAxela();
 
   const [input, setInput] = useState('');
@@ -221,16 +226,18 @@ export default function ChatScreen() {
           <Icon name="robot" size={28} color="#f97316" />
           <View style={styles.headerTitleContainer}>
             <Text style={styles.headerTitle}>AXELA</Text>
+            <Text style={styles.headerSubtitle}>AI Assistant</Text>
             <View style={styles.statusContainer}>
               <View style={[styles.statusDot, isConnected ? styles.connected : styles.disconnected]} />
-              <Text style={styles.statusText}>{isConnected ? 'Connected' : 'Offline'}</Text>
+              <Text style={styles.statusText}>
+                {desktopInstances.length > 0
+                  ? `${desktopInstances.length} Desktop${desktopInstances.length > 1 ? 's' : ''}`
+                  : isConnected ? 'Connected' : 'Offline'}
+              </Text>
             </View>
           </View>
         </View>
         <View style={styles.headerRight}>
-          <View style={styles.modeBadge}>
-            <Text style={styles.modeText}>{getModeDisplay()}</Text>
-          </View>
           <Menu
             visible={menuVisible}
             onDismiss={() => setMenuVisible(false)}
@@ -243,6 +250,8 @@ export default function ChatScreen() {
             <Menu.Item onPress={handleCreateNewConversation} title="New Chat" leadingIcon="plus" />
             <Divider />
             <Menu.Item onPress={() => { loadConversations(); setMenuVisible(false); }} title="Refresh" leadingIcon="refresh" />
+            <Divider />
+            <Menu.Item onPress={() => { loadDesktopInstances(); setMenuVisible(false); }} title="Refresh Desktops" leadingIcon="monitor" />
             {currentConversation && (
               <>
                 <Divider />
@@ -318,11 +327,44 @@ export default function ChatScreen() {
           </View>
         )}
 
+        {/* Mode Switcher */}
+        <View style={styles.modeSwitcher}>
+          <View style={styles.modeSwitcherContainer}>
+            <TouchableOpacity
+              style={[styles.modeButton, mode === 'chat' && styles.modeButtonActive]}
+              onPress={() => setMode('chat')}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.modeButtonText, mode === 'chat' && styles.modeButtonTextActive]}>
+                Chat
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modeButton, mode === 'ai' && styles.modeButtonActive]}
+              onPress={() => setMode('ai')}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.modeButtonText, mode === 'ai' && styles.modeButtonTextActive]}>
+                AI
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modeButton, mode === 'manual' && styles.modeButtonActive]}
+              onPress={() => setMode('manual')}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.modeButtonText, mode === 'manual' && styles.modeButtonTextActive]}>
+                Manual
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Input */}
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Type your message..."
+            placeholder="Ask AXELA anything..."
             placeholderTextColor="#78716c"
             value={input}
             onChangeText={setInput}
@@ -338,7 +380,7 @@ export default function ChatScreen() {
             {isProcessing ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Icon name="send" size={24} color="#fff" />
+              <Icon name="send" size={20} color="#fff" />
             )}
           </TouchableOpacity>
         </View>
@@ -448,11 +490,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     backgroundColor: '#1c1917',
     borderBottomWidth: 1,
     borderBottomColor: '#292524',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -460,12 +507,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   headerTitleContainer: {
-    gap: 2,
+    gap: 4,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#fafaf9',
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#a8a29e',
+    fontWeight: '500',
+    letterSpacing: 0.3,
   },
   statusContainer: {
     flexDirection: 'row',
@@ -492,26 +546,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  modeBadge: {
-    backgroundColor: '#292524',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  modeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#f97316',
-  },
   chatContainer: {
     flex: 1,
   },
   messagesList: {
-    padding: 16,
-    paddingBottom: 8,
+    padding: 20,
+    paddingBottom: 12,
   },
   messageContainer: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   userMessage: {
     alignItems: 'flex-end',
@@ -521,20 +564,28 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     maxWidth: '80%',
-    padding: 12,
-    borderRadius: 16,
+    padding: 16,
+    borderRadius: 18,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   userBubble: {
     backgroundColor: '#f97316',
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 6,
   },
   assistantBubble: {
     backgroundColor: '#292524',
-    borderBottomLeftRadius: 4,
+    borderBottomLeftRadius: 6,
+    borderWidth: 1,
+    borderColor: '#3a3a3a',
   },
   messageText: {
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 22,
+    letterSpacing: 0.2,
   },
   userText: {
     color: '#fff',
@@ -554,45 +605,94 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   emptyTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 32,
+    fontWeight: '700',
     color: '#f97316',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 20,
+    marginBottom: 12,
+    letterSpacing: 0.5,
   },
   emptyDescription: {
     fontSize: 16,
-    color: '#78716c',
+    color: '#a8a29e',
     textAlign: 'center',
+    lineHeight: 24,
+    paddingHorizontal: 32,
   },
-  inputContainer: {
-    flexDirection: 'row',
-    padding: 12,
+  modeSwitcher: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     backgroundColor: '#1c1917',
     borderTopWidth: 1,
     borderTopColor: '#292524',
-    gap: 8,
+  },
+  modeSwitcherContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#292524',
+    borderRadius: 12,
+    padding: 4,
+    gap: 4,
+  },
+  modeButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  modeButtonActive: {
+    backgroundColor: '#f97316',
+  },
+  modeButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#a8a29e',
+  },
+  modeButtonTextActive: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    padding: 16,
+    backgroundColor: '#1c1917',
+    borderTopWidth: 1,
+    borderTopColor: '#292524',
+    gap: 12,
+    alignItems: 'flex-end',
   },
   input: {
     flex: 1,
     backgroundColor: '#292524',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 15,
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    fontSize: 16,
     color: '#fafaf9',
-    maxHeight: 100,
+    maxHeight: 120,
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: '#3a3a3a',
   },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#f97316',
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#f97316',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
   },
   sendButtonDisabled: {
-    backgroundColor: '#44403c',
+    backgroundColor: '#3a3a3a',
+    elevation: 0,
+    shadowOpacity: 0,
+    opacity: 0.5,
   },
   historyButton: {
     padding: 4,
@@ -659,7 +759,9 @@ const styles = StyleSheet.create({
     padding: 12,
     marginVertical: 4,
     borderRadius: 8,
-    backgroundColor: '#252836',
+    backgroundColor: '#1c1917',
+    borderWidth: 1,
+    borderColor: '#292524',
   },
   conversationItemSelected: {
     backgroundColor: '#f9731620',
